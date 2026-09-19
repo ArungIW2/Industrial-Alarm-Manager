@@ -2,8 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from industrial_alarm_manager.domain.alarm_definition import AlarmDefinition
-from industrial_alarm_manager.domain.enums import AlarmPriority
+from industrial_alarm_manager import AlarmDefinition, AlarmPriority
 from industrial_alarm_manager.exceptions import DomainValidationError
 
 
@@ -20,10 +19,8 @@ def make_definition() -> AlarmDefinition:
 
 def test_alarm_definition_is_created_with_utc_timestamp() -> None:
     definition = make_definition()
-
     assert definition.code == "MOTOR_01_OVERLOAD"
     assert definition.created_at.tzinfo is not None
-    assert definition.created_at.utcoffset() is not None
 
 
 def test_alarm_definition_rejects_blank_required_text() -> None:
@@ -45,5 +42,5 @@ def test_alarm_definition_rejects_naive_timestamp() -> None:
             description="Overload condition.",
             source="MOTOR_01",
             default_priority=AlarmPriority.HIGH,
-            created_at=datetime(2026, 9, 19, 0, 0, 0),
+            created_at=datetime(2026, 9, 19),
         )

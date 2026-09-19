@@ -1,37 +1,20 @@
-# Requirements
+# Requirements Traceability
 
-## Functional Requirements
-
-| ID | Requirement |
+| Requirement | Implementation |
 |---|---|
-| FR-01 | Define alarm types and configuration. |
-| FR-02 | Trigger an alarm occurrence. |
-| FR-03 | Support CRITICAL, HIGH, MEDIUM, and LOW priorities. |
-| FR-04 | Record alarm timestamps. |
-| FR-05 | Acknowledge alarms. |
-| FR-06 | Clear alarms when the underlying fault condition disappears. |
-| FR-07 | Reset completed alarms according to lifecycle rules. |
-| FR-08 | Record lifecycle changes in alarm history. |
-| FR-09 | Prevent repeated signals from creating duplicate active occurrences. |
-| FR-10 | Filter alarms by priority. |
-| FR-11 | Filter alarms by state/status. |
-| FR-12 | Query active alarms. |
-| FR-13 | Query alarm history. |
-| FR-14 | Support explicit alarm suppression. |
-| FR-15 | Keep a reason and audit trail for suppression. |
-| FR-16 | Support escalation when configured response thresholds are exceeded. |
-| FR-17 | Handle fault reactivation before reset. |
-| FR-18 | Cover domain behavior with automated tests. |
+| Lifecycle validation | `AlarmStateMachine` transition matrix |
+| Create/trigger alarms | `AlarmManager.trigger_alarm` |
+| Priority and timestamps | Definition/occurrence/event models |
+| Acknowledge, clear, reset | Alarm manager lifecycle commands |
+| Immutable history | Append-only `AlarmEvent` records |
+| Duplicate handling | Active identity lookup plus duplicate counter/event |
+| Reactivation | `CLEARED → ACTIVE` on the same occurrence |
+| Filtering | `HistoryQueryService` and repository filters |
+| Suppression | Auditable rule with reason, actor, and expiry |
+| Escalation | Priority policy plus unacknowledged timeout evaluation |
+| Simple storage | In-memory and SQLite repository adapters |
+| Testability | Repository/clock dependency injection and automated tests |
 
-## Non-Functional Requirements
+Out of scope: physical PLC/HMI integration, hardware or process simulation, safety certification,
+notification delivery, authentication, and distributed-system guarantees.
 
-- Python 3.12 or newer.
-- No physical hardware dependency.
-- No PLC or HMI dependency.
-- No hardware simulation.
-- Domain logic must remain independent from persistence.
-- Timestamps must be timezone-aware and stored as UTC when persisted.
-- Lifecycle transitions must be deterministic and validated.
-- Alarm history should be append-only once event history is introduced.
-- Storage implementations must be replaceable behind repository abstractions.
-- Unit tests must run without a production database.

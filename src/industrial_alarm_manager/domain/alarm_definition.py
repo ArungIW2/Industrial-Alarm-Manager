@@ -1,29 +1,25 @@
 """Alarm definition domain model."""
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from industrial_alarm_manager.domain.enums import AlarmPriority
 from industrial_alarm_manager.exceptions import DomainValidationError
 
 
-def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+def utc_now() -> datetime:
+    return datetime.now(UTC)
 
 
-def _is_timezone_aware(value: datetime) -> bool:
-    return value.tzinfo is not None and value.utcoffset() is not None
+def ensure_aware(value: datetime, name: str) -> None:
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise DomainValidationError(f"{name} must be timezone-aware")
 
 
 @dataclass(frozen=True, slots=True)
 class AlarmDefinition:
-    """Configuration describing what an alarm represents.
-
-    A definition is intentionally separate from an occurrence. Configuration can
-    evolve while historical occurrences preserve the values captured when they
-    were created.
-    """
+    """Configuration describing what an alarm represents."""
 
     code: str
     name: str
@@ -35,23 +31,17 @@ class AlarmDefinition:
     reset_required: bool = True
     enabled: bool = True
     definition_id: UUID = field(default_factory=uuid4)
-    created_at: datetime = field(default_factory=_utc_now)
+    created_at: datetime = field(default_factory=utc_now)
 
     def __post_init__(self) -> None:
-        required_text = {
-            "code": self.code,
-            "name": self.name,
-            "description": self.description,
-            "source": self.source,
-            "category": self.category,
-        }
-
-        for field_name, value in required_text.items():
+        for name in ("code", "name", "description", "source", "category"):
+            value = getattr(self, name)
             if not value or not value.strip():
-                raise DomainValidationError(f"{field_name} must not be empty")
-
+                raise DomainValidationError(f"{name} must not be empty")
         if not isinstance(self.default_priority, AlarmPriority):
             raise DomainValidationError("default_priority must be an AlarmPriority")
+        ensure_aware(self.created_at, "created_at")
 
-        if not _is_timezone_aware(self.created_at):
-            raise DomainValidationError("created_at must be timezone-aware")
+    @property
+    def identity_key(self) -> str:
+        return f"{self.code}:{self.source}"

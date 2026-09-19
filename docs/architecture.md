@@ -1,79 +1,18 @@
 # Architecture
 
-## Architectural Direction
-
-```text
-+-----------------------------+
-| Interface / Examples        |
-+-------------+---------------+
-              |
-              v
-+-----------------------------+
-| Application Layer           |
-| AlarmManager, Query Service |
-+-------------+---------------+
-              |
-              v
-+-----------------------------+
-| Domain Layer                |
-| Models, State Machine       |
-+-------------+---------------+
-              |
-              v
-+-----------------------------+
-| Repository Abstractions     |
-+-------------+---------------+
-              |
-              v
-+-----------------------------+
-| Persistence Adapters        |
-| In-memory / SQLite          |
-+-----------------------------+
+```mermaid
+flowchart TD
+    UI["Examples / future API"] --> APP["Application services"]
+    APP --> DOMAIN["Domain model + state machine"]
+    APP --> PORT["AlarmRepository port"]
+    PORT --> MEM["In-memory adapter"]
+    PORT --> SQL["SQLite adapter"]
 ```
 
-## Dependency Rule
+The domain has no dependency on SQLite, CLI, REST, PLC, or HMI technologies. `AlarmManager`
+coordinates commands and audit events. `HistoryQueryService` provides the read side, while
+`EscalationService` evaluates unacknowledged active alarms using injected policies and a clock.
 
-Dependencies point inward toward the domain.
+The repository protocol is the persistence boundary. In-memory storage supports fast unit tests;
+SQLite provides a durable adapter without third-party runtime dependencies.
 
-The domain package must not import SQLite, CLI, REST API, or presentation code.
-
-## Package Responsibilities
-
-### domain
-
-Contains alarm concepts and lifecycle rules.
-
-### application
-
-Coordinates use cases such as trigger, acknowledge, clear, reset, and history queries.
-
-### policies
-
-Contains replaceable rules for duplicate handling, suppression, and escalation.
-
-### storage
-
-Contains repository interfaces and persistence adapters.
-
-### examples
-
-Demonstrates realistic industrial scenarios without simulating physical hardware.
-
-## Planned Application Flow
-
-```text
-caller
-  |
-  v
-AlarmManager
-  |
-  +--> duplicate/suppression policy
-  |
-  +--> state machine
-  |
-  +--> occurrence repository
-  |
-  +--> event repository
-```
-
-Phase 1 implements only the domain foundation. Application services and persistence intentionally remain empty package boundaries.

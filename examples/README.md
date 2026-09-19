@@ -1,14 +1,13 @@
-# Examples
+# Executable Examples
 
-Executable alarm scenarios will be added after the state machine and AlarmManager exist.
+- `basic_alarm_flow.py`: activation through reset with sequence-of-events output.
+- `alarm_reactivation.py`: a cleared fault returning before reset.
+- `suppression_and_escalation.py`: audited suppression preventing escalation.
+- `sqlite_history.py`: durable history and filtered querying.
 
-Planned examples:
+Install the package in editable mode before running an example:
 
-- Emergency Stop lifecycle
-- Motor overload acknowledgement and clearing
-- Communication failure reactivation
-- Duplicate alarm handling
-- Alarm suppression
-- Alarm escalation
-
-The examples will represent software event flows only and will not simulate physical hardware.
+```bash
+python -m pip install -e .
+python examples/basic_alarm_flow.py
+```

@@ -1,30 +1,19 @@
 # Testing Strategy
 
-## Unit Tests
+Unit tests use the in-memory adapter and an injected frozen clock. They cover the transition
+matrix, invalid commands, clear-before-acknowledge, deduplication, reactivation, suppression,
+escalation, filtering, and error guards.
 
-Unit tests should validate domain behavior without SQLite or external services.
+Integration tests use a temporary SQLite database and reopen it to verify lifecycle state,
+metadata, and event history survive a persistence round trip.
 
-Phase 1 tests cover:
-
-- stable alarm priority values;
-- stable lifecycle state values;
-- alarm definition validation;
-- timezone-aware timestamps;
-- occurrence creation from a definition;
-- logical identity keys;
-- independent metadata containers;
-- invalid occurrence counters.
-
-Phase 2 will add transition-matrix tests, including valid and invalid state transitions.
-
-## Integration Tests
-
-Integration tests will be introduced with persistence. They will use an isolated temporary SQLite database and verify that domain data and history survive repository round trips.
-
-## Commands
+Local quality gate:
 
 ```bash
-pytest
-ruff check .
-mypy src
+python -m pytest --cov=industrial_alarm_manager --cov-report=term-missing
+python -m ruff check .
+python -m mypy src
 ```
+
+CI runs the same checks on Python 3.12. Branch coverage must remain at or above 85%.
+

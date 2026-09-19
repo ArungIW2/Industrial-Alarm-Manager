@@ -1,22 +1,39 @@
-"""Enumerations used by the alarm domain."""
+"""Stable enumerations used by the alarm domain."""
 
-from enum import Enum
+from enum import StrEnum
 
 
-class AlarmPriority(str, Enum):
-    """Operational priority assigned to an alarm."""
-
+class AlarmPriority(StrEnum):
     CRITICAL = "CRITICAL"
     HIGH = "HIGH"
     MEDIUM = "MEDIUM"
     LOW = "LOW"
 
 
-class AlarmState(str, Enum):
-    """Lifecycle state of an alarm occurrence."""
-
+class AlarmState(StrEnum):
     INACTIVE = "INACTIVE"
     ACTIVE = "ACTIVE"
     ACKNOWLEDGED = "ACKNOWLEDGED"
     CLEARED = "CLEARED"
     RESET = "RESET"
+
+
+class AlarmAction(StrEnum):
+    TRIGGER = "TRIGGER"
+    ACKNOWLEDGE = "ACKNOWLEDGE"
+    CLEAR = "CLEAR"
+    RESET = "RESET"
+    FINALIZE = "FINALIZE"
+
+
+class AlarmEventType(StrEnum):
+    ACTIVATED = "ALARM_ACTIVATED"
+    ACKNOWLEDGED = "ALARM_ACKNOWLEDGED"
+    CLEARED = "ALARM_CLEARED"
+    RESET = "ALARM_RESET"
+    FINALIZED = "ALARM_FINALIZED"
+    REACTIVATED = "ALARM_REACTIVATED"
+    DUPLICATE_DETECTED = "DUPLICATE_DETECTED"
+    SUPPRESSED = "ALARM_SUPPRESSED"
+    UNSUPPRESSED = "ALARM_UNSUPPRESSED"
+    ESCALATED = "ALARM_ESCALATED"

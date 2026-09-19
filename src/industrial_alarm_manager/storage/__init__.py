@@ -1,4 +1,7 @@
-"""Persistence adapters.
+"""Repository ports and adapters."""
 
-Repository abstractions and SQLite storage are introduced in later phases.
-"""
+from industrial_alarm_manager.storage.memory_repository import InMemoryAlarmRepository
+from industrial_alarm_manager.storage.repository import AlarmRepository
+from industrial_alarm_manager.storage.sqlite_repository import SQLiteAlarmRepository
+
+__all__ = ["AlarmRepository", "InMemoryAlarmRepository", "SQLiteAlarmRepository"]

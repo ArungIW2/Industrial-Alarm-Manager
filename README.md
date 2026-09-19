@@ -1,122 +1,147 @@
 # Industrial Alarm Manager
 
-A software-focused industrial alarm management system designed to demonstrate alarm lifecycle handling, fault management, prioritization, acknowledgement, troubleshooting, and maintainable control-system software architecture.
+[![CI](https://github.com/ArungIW2/Industrial-Alarm-Manager/actions/workflows/ci.yml/badge.svg)](https://github.com/ArungIW2/Industrial-Alarm-Manager/actions/workflows/ci.yml)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> This project intentionally uses no physical PLC, HMI, sensor, motor, or hardware simulation. The focus is software architecture and industrial alarm domain logic.
+A software-only industrial alarm-management engine demonstrating deterministic lifecycle control,
+fault handling, acknowledgement, prioritization, append-only history, duplicate detection,
+suppression, escalation, and replaceable persistence.
 
-## Project Status
+> No PLC, HMI, sensor, motor, physical hardware, or hardware simulation is used. The project
+> focuses on control-system software architecture and testable industrial domain logic.
 
-**Phase 0 — Project Foundation: Complete**  
-**Phase 1 — Domain Foundation: Complete**  
-**Phase 2 — Alarm State Machine: Next**
+## Engineering Scope
 
-The current implementation provides the core domain types required before lifecycle behavior is added.
+- explicit alarm state machine with invalid-transition guards;
+- clear-before-acknowledgement and late-acknowledgement handling;
+- duplicate signal detection and cleared-fault reactivation;
+- immutable sequence-of-events audit trail with UTC timestamps;
+- priority/status/source/time-range queries;
+- suppression with actor, reason, expiry, and audit events;
+- timeout-based escalation policies;
+- repository abstraction with in-memory and SQLite adapters;
+- injected clock for deterministic tests;
+- static analysis, linting, coverage threshold, and GitHub Actions CI.
 
-## Goals
+## Lifecycle
 
-The project is designed to demonstrate understanding of:
-
-- industrial alarms and fault handling;
-- alarm priorities;
-- alarm acknowledgement and lifecycle;
-- duplicate alarm concepts;
-- alarm history and troubleshooting;
-- suppression and escalation concepts;
-- domain-oriented control-system software architecture;
-- automated testing.
-
-## Alarm Priorities
-
-- `CRITICAL`
-- `HIGH`
-- `MEDIUM`
-- `LOW`
-
-## Lifecycle Design
-
-```text
-INACTIVE
-   |
-   | trigger
-   v
-ACTIVE
-   |
-   | acknowledge
-   v
-ACKNOWLEDGED
-   |
-   | fault condition clears
-   v
-CLEARED
-   |
-   | reset
-   v
-RESET
-   |
-   | finalize
-   v
-INACTIVE
+```mermaid
+stateDiagram-v2
+    [*] --> INACTIVE
+    INACTIVE --> ACTIVE: trigger
+    ACTIVE --> ACKNOWLEDGED: acknowledge
+    ACTIVE --> CLEARED: fault clears
+    ACKNOWLEDGED --> CLEARED: fault clears
+    CLEARED --> ACTIVE: fault reactivates
+    CLEARED --> RESET: reset
+    RESET --> INACTIVE: finalize
 ```
 
-The detailed design also allows a fault condition to clear before acknowledgement. That behavior will be implemented and validated in Phase 2.
+`ACTIVE → CLEARED` is valid when a condition disappears before acknowledgement. A cleared alarm
+may be acknowledged without changing its state; if acknowledgement is configured as required,
+reset remains blocked until that acknowledgement exists.
+
+## Quick Start
+
+Requires Python 3.12 or newer.
+
+```bash
+git clone https://github.com/ArungIW2/Industrial-Alarm-Manager.git
+cd Industrial-Alarm-Manager
+python -m venv .venv
+python -m pip install -e ".[dev]"
+python -m pytest
+```
+
+Minimal use:
+
+```python
+from industrial_alarm_manager import (
+    AlarmDefinition,
+    AlarmManager,
+    AlarmPriority,
+    InMemoryAlarmRepository,
+)
+
+repository = InMemoryAlarmRepository()
+manager = AlarmManager(repository)
+
+definition = AlarmDefinition(
+    code="MOTOR_OVERLOAD",
+    name="Motor 01 Overload",
+    description="Motor protection detected an overload condition",
+    source="MOTOR_01",
+    default_priority=AlarmPriority.HIGH,
+)
+manager.register_definition(definition)
+
+alarm = manager.trigger_alarm("MOTOR_OVERLOAD", "MOTOR_01")
+manager.acknowledge_alarm(alarm.occurrence_id, actor="operator-01")
+manager.clear_alarm(alarm.occurrence_id)
+manager.reset_alarm(alarm.occurrence_id, actor="operator-01")
+```
+
+Run the complete example:
+
+```bash
+python examples/basic_alarm_flow.py
+```
 
 ## Architecture
 
-```text
-Interface / Examples
-        |
-        v
-Application Services
-        |
-        v
-Domain Model
-        |
-        v
-Repository Abstractions
-        |
-        v
-Persistence
+```mermaid
+flowchart LR
+    I["Examples / future API"] --> A["Application services"]
+    A --> D["Domain + state machine"]
+    A --> R["Repository port"]
+    R --> M["In-memory adapter"]
+    R --> S["SQLite adapter"]
 ```
 
-The domain layer must not depend on SQLite or any future API/UI layer.
+The state machine and domain models do not know that SQLite exists. Persistence adapters cannot
+declare an invalid transition valid. This separation keeps lifecycle behavior deterministic and
+allows storage or interface technology to change independently.
 
-## Current Domain Model
+## Domain Model
 
-### AlarmDefinition
+| Model | Responsibility |
+|---|---|
+| `AlarmDefinition` | Configuration, identity, priority, acknowledgement/reset requirements |
+| `AlarmOccurrence` | Current lifecycle and counters for one fault occurrence |
+| `AlarmEvent` | Immutable audit fact for sequence-of-events analysis |
+| `AlarmSuppression` | Auditable temporary/permanent suppression rule |
+| `EscalationPolicy` | Unacknowledged timeout and escalation limit by priority |
 
-Represents what an alarm means and how it is configured.
+Definition, occurrence, and event are intentionally separate. An occurrence snapshots its
+priority, so historical severity does not change when a definition is reconfigured later.
 
-Examples:
-
-- Emergency Stop
-- Motor Overload
-- Sensor Failure
-- Communication Failure
-- High Temperature
-- Low Material
-- Timeout
-- Controller Fault
-
-### AlarmOccurrence
-
-Represents one occurrence of an alarm definition. Priority is copied into the occurrence so historical data is not silently changed if alarm configuration changes later.
-
-## Repository Structure
+## Project Structure
 
 ```text
-src/
-  industrial_alarm_manager/
-    application/
-    domain/
-    policies/
-    storage/
+src/industrial_alarm_manager/
+├── application/          # command and query services
+├── domain/               # models, enums, lifecycle state machine
+├── storage/              # repository port and adapters
+├── clock.py              # injectable time abstraction
+└── exceptions.py         # explicit domain failures
 tests/
-  unit/
-docs/
-examples/
-README.md
-pyproject.toml
+├── unit/
+└── integration/
+docs/                     # engineering decisions and traceability
+examples/                 # executable scenarios
 ```
+
+## Quality Gate
+
+```bash
+python -m ruff check .
+python -m mypy src
+python -m pytest --cov=industrial_alarm_manager --cov-report=term-missing
+```
+
+CI enforces formatting/lint rules, strict type checking, the complete test suite, and at least 85%
+branch coverage on Python 3.12.
 
 ## Development Roadmap
 
@@ -124,50 +149,33 @@ pyproject.toml
 |---|---|---|
 | 0 | Project foundation | Complete |
 | 1 | Domain foundation | Complete |
-| 2 | Alarm state machine | Next |
-| 3 | Alarm manager | Planned |
-| 4 | Duplicate handling | Planned |
-| 5 | Persistence / SQLite | Planned |
-| 6 | History and query | Planned |
-| 7 | Suppression | Planned |
-| 8 | Escalation | Planned |
-| 9 | Examples and broader testing | Planned |
-| 10 | Portfolio polish and CI | Planned |
-
-## Development Setup
-
-Requires Python 3.12 or newer.
-
-```bash
-python -m venv .venv
-```
-
-Activate the virtual environment, then install development dependencies:
-
-```bash
-pip install -e ".[dev]"
-```
-
-Run tests:
-
-```bash
-pytest
-```
-
-Run linting:
-
-```bash
-ruff check .
-```
+| 2 | Alarm state machine | Complete |
+| 3 | Alarm manager | Complete |
+| 4 | Duplicate handling and reactivation | Complete |
+| 5 | Repository abstraction and SQLite | Complete |
+| 6 | Append-only history and filtering | Complete |
+| 7 | Suppression and audit trail | Complete |
+| 8 | Timeout-based escalation | Complete |
+| 9 | Executable examples and full test suite | Complete |
+| 10 | Portfolio documentation and CI | Complete |
 
 ## Documentation
 
-Design documentation is available under `docs/`:
+- [Requirements traceability](docs/requirements.md)
+- [Alarm philosophy](docs/alarm-philosophy.md)
+- [Lifecycle rules](docs/alarm-lifecycle.md)
+- [Priority definition](docs/priority-definition.md)
+- [Architecture](docs/architecture.md)
+- [Data model](docs/data-model.md)
+- [Testing strategy](docs/testing.md)
 
-- `requirements.md`
-- `alarm-philosophy.md`
-- `alarm-lifecycle.md`
-- `priority-definition.md`
-- `architecture.md`
-- `data-model.md`
-- `testing.md`
+## Limitations
+
+This is an educational portfolio implementation, not a certified safety instrumented system or a
+drop-in replacement for an ISA-18.2/IEC 62682-compliant production alarm platform. Authentication,
+distributed delivery guarantees, external notifications, and PLC/SCADA integration are outside
+the current scope.
+
+## License
+
+[MIT](LICENSE)
